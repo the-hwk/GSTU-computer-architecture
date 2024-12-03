@@ -1,2 +1,1 @@
-# GSTU-computer-architecture
-Архитектура ЭВМ
+# Архитектура ЭВМ
