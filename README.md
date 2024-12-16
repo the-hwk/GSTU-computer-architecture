@@ -1,6 +1,6 @@
 # Архитектура ЭВМ
 
-### Теория по коду
+### Теория по коду для л.р. №4, №5
 
 ```ASM
 ; указываем компилятору, что код будет использовать инструкции для процессора 
@@ -103,4 +103,131 @@ mov eax, 100    ; младшие биты
 mov edx, 0      ; старшие биты
 mov ebx, 3      ; делитель
 div ebx         ; выполняем деление
+```
+
+### Теория по коду для л.р. №6
+
+```ASM
+.386
+.model flat, stdcall
+option casemap:none
+
+
+
+include ../masm32/include/fpu.inc
+include ../masm32/include/masm32rt.inc
+
+includelib ../masm32/lib/fpu.lib
+includelib ../masm32/lib/masm32rt.lib
+
+
+
+.data
+    ; для вывода строки с результатами
+    message db "Result: %s", 0Ah, 0
+
+    ; для хранения результатов в строковом виде
+    res1 db 21 dup(0)
+    res2 db 21 dup(0)
+    res3 db 21 dup(0)
+    res4 db 21 dup(0)
+    res5 db 21 dup(0)
+
+    ; переменная уравнения
+    x    dd 1.0
+
+    ; доп. переменная-буфер
+    tmp  dd 0.0
+
+    ; для хранения результатов
+    y1   dt 0.0
+    y2   dt 0.0
+    y3   dt 0.0
+    y4   dt 0.0
+    y5   dt 0.0
+
+    ; величина шага
+    step dd 4.0
+
+
+
+.const
+    ; константы уравнения
+    op1  dd 2.0
+    op2  dd 1.6
+    op3  dd 7.0
+
+
+
+.code
+main:
+    ; вычисление Yn = 7 * x^3 / (2 * x^2 + 1.6)
+    ; нач. знач. x: 1
+    ; шаг: 4
+
+    finit                  ; инициализация регистров FPU
+
+    mov ecx, 5             ; итератор цикла
+
+    cycle:                 ; метка начала цикла
+
+        ; примечание: команды сопроцессора в качестве левого операнда
+        ; используют значение на вершине стека сопроцессора (ST) 
+
+        fld x              ; загрузка значения x в вершину стека сопроцессора
+        fmul x             ; x^2 (x тот, который находится в стеке)
+        fmul x             ; x^3
+        fmul op3           ; 7 * x^3
+
+        ; в стеке хранится результат вычисления 7 * x^3
+
+        fld x              ; загрузка значения x в вершину стека сопроцессора
+        fmul x             ; x^2
+        fmul op1           ; 2 * x^2
+        fadd op2           ; 2 * x^2 + 1.6
+
+        ; в стеке теперь хранятся следующие величины:
+        ; 2 * x^2 + 1.6 (вершина стека)
+        ; 7 * x^3
+
+        fstp tmp           ; выгрузка вершины стека в переменную-буфер
+        fdiv tmp           ; 7 * x^3 / (2 * x^2 + 1.6)
+
+        fld x              ; загрузка значения x в вершину стека сопроцессора
+        fadd step          ; увеличение x на величину шага
+        fstp x             ; выгрузка вершины стека в память
+
+        ; результат вычисления выражения на каждой
+        ; итерации цикла будет сохраняться на стеке
+
+        loop cycle         ; если exc = exc - 1 != 0,
+                           ; то переход на след. итерацию цикла
+                           ; (изменение итератора цикла
+                           ; выполняется автоматически)
+
+    ; выгрузка всего стека в память
+    fstp y5
+    fstp y4
+    fstp y3
+    fstp y2
+    fstp y1
+
+    ; преобразование float в string и вывод
+    invoke FpuFLtoA, addr y1, 3, addr res1, SRC1_REAL or SRC2_DIMM
+    invoke crt_printf, addr message, addr res1
+
+    invoke FpuFLtoA, addr y2, 3, addr res2, SRC1_REAL or SRC2_DIMM
+    invoke crt_printf, addr message, addr res2
+
+    invoke FpuFLtoA, addr y3, 3, addr res3, SRC1_REAL or SRC2_DIMM
+    invoke crt_printf, addr message, addr res3
+
+    invoke FpuFLtoA, addr y4, 3, addr res4, SRC1_REAL or SRC2_DIMM
+    invoke crt_printf, addr message, addr res4
+
+    invoke FpuFLtoA, addr y5, 3, addr res5, SRC1_REAL or SRC2_DIMM
+    invoke crt_printf, addr message, addr res5
+	
+    invoke ExitProcess, 0
+end main
 ```
